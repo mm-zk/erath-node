@@ -1,0 +1,31 @@
+[package]
+name = "erath-node"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+reth = {git = "https://github.com/paradigmxyz/reth", rev="3c3c7b36adeb0a0491518854a2b13f9f85fc0aff" }
+reth-transaction-pool = {git = "https://github.com/paradigmxyz/reth", rev="3c3c7b36adeb0a0491518854a2b13f9f85fc0aff" }
+jsonrpsee = { version = "0.20" }
+
+eyre = "0.6"
+clap = "4"
+
+era_test_node = { git = "https://github.com/matter-labs/era-test-node.git", rev = "d6ad110cb069be76238a2def7f80b53276451033" }
+
+
+[patch.crates-io]
+packed_simd = { path = "../packed_simd" }
+
+[patch."https://github.com/matter-labs/era-boojum.git"]
+boojum = { path = "../era-boojum" }
+
+[patch."https://github.com/matter-labs/snark-wrapper.git"]
+snark_wrapper = { path = "../snark-wrapper" }
+
+
+[profile.dev]
+debug = 0
