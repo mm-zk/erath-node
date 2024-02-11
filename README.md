@@ -7,3 +7,14 @@ currently era requires a nightly rust compiler - and the latest one that works, 
 
 Also the era_test_harness 1.4.0 was not upgraded with the latest boojum api change. So I had to 'move back' 1.4.1 and boojum to the PRs before the API change.
 
+
+
+
+## Running:
+
+
+cargo run -p erath-node -- node --http --enable-ext --dev --instance 1 --dev.block-time 1s --datadir /tmp/foo1
+
+
+In the future - replace datadir with some tmpdir.
+
