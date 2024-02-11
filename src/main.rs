@@ -20,13 +20,14 @@ use era_test_node::{
 };
 
 use era_test_node::node::InMemoryNode;
+use tokio::runtime::Runtime;
 
-use std::fs::File;
 use std::{
     env,
     net::{IpAddr, Ipv4Addr, SocketAddr},
     str::FromStr,
 };
+use std::{fs::File, thread};
 
 use futures::{
     channel::oneshot,
@@ -85,31 +86,36 @@ async fn build_json_http<
     tokio::spawn(recv.map(drop))
 }
 
-#[tokio::main]
-async fn main() {
-    let node: InMemoryNode<HttpForkSource> = InMemoryNode::new(
-        None,
-        None,
-        InMemoryNodeConfig {
-            show_calls: ShowCalls::None,
-            show_storage_logs: ShowStorageLogs::None,
-            show_vm_details: ShowVMDetails::None,
-            show_gas_details: ShowGasDetails::None,
-            resolve_hashes: false,
-            system_contracts_options: era_test_node::system_contracts::Options::BuiltIn,
-        },
-    );
+fn main() {
+    let handle1 = thread::spawn(|| {
+        let rt = Runtime::new().unwrap();
+        rt.block_on(async {
+            let node: InMemoryNode<HttpForkSource> = InMemoryNode::new(
+                None,
+                None,
+                InMemoryNodeConfig {
+                    show_calls: ShowCalls::None,
+                    show_storage_logs: ShowStorageLogs::None,
+                    show_vm_details: ShowVMDetails::None,
+                    show_gas_details: ShowGasDetails::None,
+                    resolve_hashes: false,
+                    system_contracts_options: era_test_node::system_contracts::Options::BuiltIn,
+                },
+            );
 
-    let threads = build_json_http(
-        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 8011),
-        LevelFilter::from(LogLevel::Info),
-        node,
-    )
-    .await;
+            let threads = build_json_http(
+                SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 8011),
+                LevelFilter::from(LogLevel::Info),
+                node,
+            )
+            .await;
+
+            future::select_all(vec![threads]).await.0.unwrap();
+        });
+    });
 
     Cli::<MyRethCliExt>::parse().run().unwrap();
-
-    future::select_all(vec![threads]).await.0.unwrap();
+    handle1.join().unwrap();
 }
 
 /// The type that tells the reth CLI what extensions to use

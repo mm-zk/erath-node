@@ -18,3 +18,8 @@ cargo run -p erath-node -- node --http --enable-ext --dev --instance 1 --dev.blo
 
 In the future - replace datadir with some tmpdir.
 
+
+
+```shell
+RUST_BACKTRACE=1 cargo run -p erath-node -- node --http --enable-ext --dev --instance 1 --dev.block-max-transactions 2 --datadir /tmp/foo1
+```
