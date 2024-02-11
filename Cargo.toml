@@ -16,8 +16,8 @@ path = "src/deployer.rs"
 
 [dependencies]
 
-reth = {git = "https://github.com/paradigmxyz/reth", rev="3c3c7b36adeb0a0491518854a2b13f9f85fc0aff" }
-reth-transaction-pool = {git = "https://github.com/paradigmxyz/reth", rev="3c3c7b36adeb0a0491518854a2b13f9f85fc0aff" }
+reth = {git = "https://github.com/paradigmxyz/reth", rev="0977249e6476ee3dd463fe4ffdfc756bde869a19" }
+reth-transaction-pool = {git = "https://github.com/paradigmxyz/reth", rev="0977249e6476ee3dd463fe4ffdfc756bde869a19" }
 jsonrpsee = { version = "0.20" }
 
 eyre = "0.6"
