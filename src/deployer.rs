@@ -1,46 +1,13 @@
-use ethers::abi::{Address, FixedBytes, ParamType, Token, Tokenize, TupleParam};
+use ethers::abi::{Address, Tokenize};
 use ethers::types::transaction::eip2718::TypedTransaction;
-use rlp::RlpStream;
 use serde::{Deserialize, Serialize};
 
 use hex;
 use serde_json::from_str;
-use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
 use ethers::prelude::*;
-
-/*
-async fn deploy(web3: Web3<Http>, bytecode: String) {
-    let from_address = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
-        .parse::<Address>()
-        .unwrap();
-    let tx = TransactionRequest {
-        from: from_address,
-        to: None,              // None indicates a contract creation
-        value: Some(0.into()), // Value sent with the deployment, typically 0
-        data: Some(Bytes::from(
-            hex::decode(bytecode.trim_start_matches("0x")).expect("Invalid bytecode"),
-        )),
-        gas: Some(1_000_000.into()), // Set an appropriate gas limit
-        gas_price: None,             // Automatically determined by the network/client
-        nonce: None,                 // Automatically determined by the network/client
-        ..Default::default()
-    };
-
-    let tx_hash = web3
-        .eth()
-        .send_transaction(tx)
-        .await
-        .expect("Failed to send transaction");
-    println!("Transaction Hash: {:?}", tx_hash);
-}
-
-use web3::transports::Http;
-use web3::Web3;
-
-*/
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -50,8 +17,8 @@ struct CompiledCode {
     abi: serde_json::Value,
 }
 
-async fn deploy_contract(
-    client: Arc<SignerMiddleware<Provider<Http>, LocalWallet>>,
+async fn deploy_contract<M: ethers::middleware::Middleware>(
+    client: Arc<M>,
     code: &CompiledCode,
 ) -> Option<H160> {
     // Specify the contract bytecode to deploy (example bytecode below)
@@ -74,15 +41,17 @@ async fn deploy_contract(
     receipt.contract_address
 }
 
-async fn load_and_deploy(
-    client: &Arc<SignerMiddleware<Provider<Http>, LocalWallet>>,
+async fn load_and_deploy<M: ethers::middleware::Middleware>(
+    client: &Arc<M>,
     bytecode_json: &str,
-) -> H160 {
+) -> Contract<M> {
     let code: CompiledCode = serde_json::from_str(bytecode_json).unwrap();
     let result = deploy_contract(client.clone(), &code).await.unwrap();
     println!("Deployed {:?} into {:?}", code.contract_name, result);
 
-    result
+    let abi: ethers::abi::Abi = from_str(&code.abi.to_string()).unwrap();
+
+    Contract::new(result, abi, client.clone())
 }
 
 async fn deploy_contracts(rpc_url: &str) {
@@ -147,7 +116,7 @@ async fn deploy_contracts(rpc_url: &str) {
             let initialize_function = diamond_init_abi.function("initialize").unwrap();
 
             let input_arguments = ((
-                Address::from(verifier),
+                Address::from(verifier.address()),
                 Address::from(wallet_address),
                 Address::from(wallet_address),
                 H256::zero(), // FIXME: genesis hash
@@ -178,18 +147,32 @@ async fn deploy_contracts(rpc_url: &str) {
                 .unwrap()
         };
 
+        let facets = vec![&executor, &getter, &admin, &mailbox];
+
         let chain_id = U256::from(1337);
         // DiamondCutData
         let diamond_cut = (
-            vec![(
-                Address::from(mailbox),
-                Uint8::from(0), // 'Add'
-                false,
-                vec![[13u8, 14u8, 17u8, 22u8]], // TODO: fix this.
-            )],
-            Address::from(diamond_init),
+            facets
+                .iter()
+                .map(|facet| {
+                    (
+                        Address::from(facet.address()),
+                        Uint8::from(0), // 'Add'
+                        false,
+                        facet
+                            .abi()
+                            .functions()
+                            .filter(|x| x.name != "getName")
+                            .map(|x| x.short_signature())
+                            .collect::<Vec<_>>(),
+                    )
+                })
+                .collect::<Vec<_>>(),
+            Address::from(diamond_init.address()),
             Bytes::from(init_calldata),
         );
+
+        println!("{:?}", diamond_cut);
 
         let data: Bytes = abi
             .constructor()
